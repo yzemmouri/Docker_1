@@ -12,3 +12,5 @@ RUN apt update && apt install -y tzdata && \
 EXPOSE 443 80 22
 
 ENTRYPOINT (/opt/gitlab/embedded/bin/runsvdir-start &) && gitlab-ctl reconfigure && tail -f /dev/null
+
+#docker run -it -p 4433:443 -p 8080:80 -p 2222:22 gl

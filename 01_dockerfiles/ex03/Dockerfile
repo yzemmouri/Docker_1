@@ -25,4 +25,5 @@ EXPOSE 80 443 2222
 CMD /opt/gitlab/embedded/bin/runsvdir-start& gitlab-ctl reconfigure ; service ssh restart ; bash
 
 #docker build --build-arg MY_HOST=$(docker-machine ip char) -t gitlab 01_dockerfiles/ex03
-#docker run -it --privileged -p 80:80 -p 443:443 -p 2222:2222 gitlab
+#docker run -it -e GITLAB_ROOT_PASSWORD=root_root --privileged -p 80:80 -p 443:443 -p 2222:2222 gitlab
+#git -c http.sslVerify=false clone

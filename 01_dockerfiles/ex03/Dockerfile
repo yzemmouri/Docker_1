@@ -1,16 +1,28 @@
-FROM ubuntu
+FROM ubuntu:20.04
+RUN apt-get update  && apt-get upgrade -y &&\
+    DEBIAN_FRONTEND=noninteractive apt-get install apt-utils apt-transport-https curl openssh-server ca-certificates postfix -y && \
+    DEBIAN_FRONTEND=noninteractive curl https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh | bash && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y gitlab-ce && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
 
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y ca-certificates openssh-server wget postfix
+WORKDIR /etc/gitlab
 
-RUN wget https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh && chmod 777 script.deb.sh && ./script.deb.sh && apt-get install -y gitlab-ce
+ARG MY_HOST
+RUN    mkdir -p ssl && chmod 755 ssl
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ssl/$MY_HOST.key -out ssl/$MY_HOST.crt -subj "/C=MA/ST=KH/L=KH/O=1337/OU=1337/CN=[$MY_HOST]/emailAddress=[email]"
 
-RUN apt update && apt install -y tzdata && \
-  apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN sed -i "s/http:\/\/gitlab.example.com/https:\/\/$MY_HOST/" gitlab.rb && \
+    echo "nginx['enable'] = true" >> gitlab.rb && \
+    echo "nginx['redirect_http_to_https'] = true" >> gitlab.rb && \
+    echo "letsencrypt['enable'] = false" >> gitlab.rb && \
+    echo "gitlab_rails['gitlab_shell_ssh_port'] = 2222" >> gitlab.rb && \
+    echo "Port 2222" >> /etc/ssh/sshd_config
 
-EXPOSE 443 80 22
+WORKDIR /
 
-ENTRYPOINT (/opt/gitlab/embedded/bin/runsvdir-start &) && gitlab-ctl reconfigure && tail -f /dev/null
 
-#docker run -it -e GITLAB_ROOT_PASSWORD=root_root  -p 4433:443 -p 8080:80 -p 2222:22 gl
+EXPOSE 80 443 2222
+CMD /opt/gitlab/embedded/bin/runsvdir-start& gitlab-ctl reconfigure ; service ssh restart ; bash
+
+#docker build --build-arg MY_HOST=$(docker-machine ip char) -t gitlab 01_dockerfiles/ex03
+#docker run -it --privileged -p 80:80 -p 443:443 -p 2222:2222 gitlab
